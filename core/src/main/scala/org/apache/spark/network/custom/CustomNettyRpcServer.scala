@@ -17,15 +17,19 @@
 
 package org.apache.spark.network.custom
 
-import java.nio.ByteBuffer
+import java.io.File
 import scala.collection.JavaConverters._
 
+import java.nio.ByteBuffer
+
+import scala.collection.JavaConverters._
 import org.apache.spark.internal.Logging
 import org.apache.spark.network.BlockDataManager
-import org.apache.spark.network.buffer.NioManagedBuffer
+import org.apache.spark.network.buffer.{FileSegmentManagedBuffer, NioManagedBuffer}
 import org.apache.spark.network.client.{RpcResponseCallback, TransportClient}
 import org.apache.spark.network.netty.NettyBlockRpcServer
 import org.apache.spark.network.shuffle.protocol.{BlockTransferMessage, OpenBlocks, StreamHandle, UploadBlock}
+import org.apache.spark.network.util.{MapConfigProvider, TransportConf}
 import org.apache.spark.serializer.Serializer
 import org.apache.spark.storage.{BlockId, StorageLevel}
 
@@ -46,30 +50,12 @@ class CustomNettyRpcServer (
 
     message match {
       case openBlocks: OpenBlocks =>
-        val blocksNum = openBlocks.blockIds.length
-
-        val blocks = for (i <- (0 until blocksNum).view)
-          yield blockManager.getBlockData(BlockId.apply(openBlocks.blockIds(i)))
-
-        val streamId = streamManager.registerStream(appId, blocks.iterator.asJava,
-          client.getChannel)
-        logTrace(s"Registered streamId $streamId with $blocksNum buffers")
-        responseContext.onSuccess(new StreamHandle(streamId, blocksNum).toByteBuffer)
-
-      case uploadBlock: UploadBlock =>
-        // StorageLevel and ClassTag are serialized as bytes using our JavaSerializer.
-        val (level: StorageLevel, classTag: ClassTag[_]) = {
-          serializer
-            .newInstance()
-            .deserialize(ByteBuffer.wrap(uploadBlock.metadata))
-            .asInstanceOf[(StorageLevel, ClassTag[_])]
+        val conf = new TransportConf("customNettyRpcServer", MapConfigProvider.EMPTY)
+        val blocks = {
+            val file = new File("pom.xml")
+            new FileSegmentManagedBuffer(conf, file, 0, file.length)
         }
-        val data = new NioManagedBuffer(ByteBuffer.wrap(uploadBlock.blockData))
-        val blockId = BlockId(uploadBlock.blockId)
-        logDebug(s"Receiving replicated block $blockId with level ${level} " +
-          s"from ${client.getSocketAddress}")
-        blockManager.putBlockData(blockId, data, level, classTag)
-        responseContext.onSuccess(ByteBuffer.allocate(0))
+        responseContext.onSuccess(blocks.nioByteBuffer())
     }
   }
 
