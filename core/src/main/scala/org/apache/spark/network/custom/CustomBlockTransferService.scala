@@ -34,11 +34,12 @@ private[spark] class CustomBlockTransferService(
      bindAddress: String,
      hostName: String,
      _port: Int,
-     numCores: Int)
+     numCores: Int,
+     answer: String)
   extends NettyBlockTransferService(conf, securityManager, bindAddress, hostName, _port, numCores) {
 
   override def init(blockDataManager: BlockDataManager): Unit = {
-    val rpcHandler = new CustomNettyRpcServer(conf.getAppId, serializer, blockDataManager)
+    val rpcHandler = new CustomNettyRpcServer(conf.getAppId, serializer, blockDataManager, answer)
     var serverBootstrap: Option[TransportServerBootstrap] = None
     var clientBootstrap: Option[TransportClientBootstrap] = None
     if (authEnabled) {
@@ -48,6 +49,7 @@ private[spark] class CustomBlockTransferService(
     transportContext = new TransportContext(transportConf, rpcHandler)
     clientFactory = transportContext.createClientFactory(clientBootstrap.toSeq.asJava)
     server = createServer(serverBootstrap.toList)
+
     appId = conf.getAppId
     logInfo(s"Server created on ${hostName}:${server.getPort}")
   }
@@ -64,8 +66,7 @@ private[spark] class CustomBlockTransferService(
       val blockFetchStarter = new RetryingBlockFetcher.BlockFetchStarter {
         override def createAndStart(blockIds: Array[String], listener: BlockFetchingListener) {
           val client = clientFactory.createClient(host, port)
-          new CustomOneForOneBlockFetcher(client, appId, execId, blockIds, listener,
-            transportConf, tempFileManager).start()
+          new CustomOneForOneBlockFetcher(client, appId, execId, blockIds, listener).start()
         }
       }
 

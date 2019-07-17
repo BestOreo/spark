@@ -17,28 +17,21 @@
 
 package org.apache.spark.network.custom
 
-import java.io.File
-import scala.collection.JavaConverters._
-
 import java.nio.ByteBuffer
 
-import scala.collection.JavaConverters._
 import org.apache.spark.internal.Logging
 import org.apache.spark.network.BlockDataManager
-import org.apache.spark.network.buffer.{FileSegmentManagedBuffer, NioManagedBuffer}
 import org.apache.spark.network.client.{RpcResponseCallback, TransportClient}
 import org.apache.spark.network.netty.NettyBlockRpcServer
-import org.apache.spark.network.shuffle.protocol.{BlockTransferMessage, OpenBlocks, StreamHandle, UploadBlock}
-import org.apache.spark.network.util.{MapConfigProvider, TransportConf}
+import org.apache.spark.network.shuffle.protocol.{BlockTransferMessage, OpenBlocks}
 import org.apache.spark.serializer.Serializer
-import org.apache.spark.storage.{BlockId, StorageLevel}
 
-import scala.reflect.ClassTag
 
 class CustomNettyRpcServer (
        appId: String,
        serializer: Serializer,
-       blockManager: BlockDataManager)
+       blockManager: BlockDataManager,
+       answer: String)
   extends NettyBlockRpcServer(appId, serializer, blockManager) with Logging {
 
   override def receive(
@@ -48,14 +41,11 @@ class CustomNettyRpcServer (
     val message = BlockTransferMessage.Decoder.fromByteBuffer(rpcMessage)
     logTrace(s"Received request: $message")
 
+    println("CustomNettyRpcServer receiving " + message)
     message match {
       case openBlocks: OpenBlocks =>
-        val conf = new TransportConf("customNettyRpcServer", MapConfigProvider.EMPTY)
-        val blocks = {
-            val file = new File("pom.xml")
-            new FileSegmentManagedBuffer(conf, file, 0, file.length)
-        }
-        responseContext.onSuccess(blocks.nioByteBuffer())
+        println("message matches OpenBlocks")
+        responseContext.onSuccess(ByteBuffer.wrap(answer.getBytes()))
     }
   }
 
