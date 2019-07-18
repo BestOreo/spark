@@ -36,7 +36,7 @@ class CustomBlockTransferServiceSuite extends SparkFunSuite
   test("test procedure of custom transferService") {
     transferService = createService(port = 0)
     val blockId = ShuffleBlockId(1,2,3)
-    val listener = new fetchingListener
+    val listener = mock(classOf[BlockFetchingListener])
 
     transferService.fetchBlocks("localhost", transferService.port, "1",
       Array(blockId.toString), listener, null)
@@ -55,17 +55,5 @@ class CustomBlockTransferServiceSuite extends SparkFunSuite
     service.init(blockDataManager)
     service
   }
-
-  class fetchingListener extends BlockFetchingListener{
-    @Override
-    def onBlockFetchSuccess(blockId: String, data: ManagedBuffer): Unit = {
-      println("--onBlockFetchSuccess")
-    }
-
-    @Override
-    def onBlockFetchFailure(blockId: String, exception: Throwable): Unit = {
-      println("--onBlockFetchFailure")
-    }
-  }
-
+  
 }
