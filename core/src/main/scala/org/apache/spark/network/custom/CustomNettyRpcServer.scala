@@ -14,16 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.spark.network.custom
 
 import java.nio.ByteBuffer
 
+import io.netty.buffer.Unpooled
 import org.apache.spark.internal.Logging
 import org.apache.spark.network.BlockDataManager
 import org.apache.spark.network.client.{RpcResponseCallback, TransportClient}
 import org.apache.spark.network.netty.NettyBlockRpcServer
-import org.apache.spark.network.shuffle.protocol.{BlockTransferMessage, OpenBlocks}
 import org.apache.spark.serializer.Serializer
 
 
@@ -38,13 +37,15 @@ class CustomNettyRpcServer (
       client: TransportClient,
       rpcMessage: ByteBuffer,
       responseContext: RpcResponseCallback): Unit = {
-    val message = BlockTransferMessage.Decoder.fromByteBuffer(rpcMessage)
-    logTrace(s"Received request: $message")
+
+    val buf = Unpooled.wrappedBuffer(rpcMessage)
+    buf.readByte()
+    val message = CustomMessage.decode(buf)
 
     println("CustomNettyRpcServer receiving " + message)
     message match {
-      case openBlocks: OpenBlocks =>
-        println("message matches OpenBlocks")
+      case m: CustomMessage =>
+        println("message matches CustomMessage")
         responseContext.onSuccess(ByteBuffer.wrap(answer.getBytes()))
     }
   }

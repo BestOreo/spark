@@ -60,6 +60,7 @@ public abstract class BlockTransferMessage implements Encodable {
     public static BlockTransferMessage fromByteBuffer(ByteBuffer msg) {
       ByteBuf buf = Unpooled.wrappedBuffer(msg);
       byte type = buf.readByte();
+      System.out.println(type);
       switch (type) {
         case 0: return OpenBlocks.decode(buf);
         case 1: return UploadBlock.decode(buf);

@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.spark.network.custom
 
 import scala.collection.JavaConverters._
@@ -23,23 +22,22 @@ import org.apache.spark.network.client.TransportClientBootstrap
 import org.apache.spark.network.{BlockDataManager, TransportContext}
 import org.apache.spark.network.crypto.{AuthClientBootstrap, AuthServerBootstrap}
 import org.apache.spark.{SecurityManager, SparkConf}
-import org.apache.spark.network.netty.{NettyBlockRpcServer, NettyBlockTransferService}
+import org.apache.spark.network.netty.NettyBlockTransferService
 import org.apache.spark.network.server.TransportServerBootstrap
-import org.apache.spark.network.shuffle.{BlockFetchingListener, DownloadFileManager, RetryingBlockFetcher}
 
 
-private[spark] class CustomBlockTransferService(
-     conf: SparkConf,
-     securityManager: SecurityManager,
-     bindAddress: String,
-     hostName: String,
-     _port: Int,
-     numCores: Int,
-     answer: String)
+private[spark] class CustomTransferService(
+   conf: SparkConf,
+   securityManager: SecurityManager,
+   bindAddress: String,
+   hostName: String,
+   _port: Int,
+   numCores: Int,
+   expectedAnswer: String)
   extends NettyBlockTransferService(conf, securityManager, bindAddress, hostName, _port, numCores) {
 
   override def init(blockDataManager: BlockDataManager): Unit = {
-    val rpcHandler = new CustomNettyRpcServer(conf.getAppId, serializer, blockDataManager, answer)
+    val rpcHandler = new CustomNettyRpcServer(conf.getAppId, serializer, blockDataManager, expectedAnswer)
     var serverBootstrap: Option[TransportServerBootstrap] = None
     var clientBootstrap: Option[TransportClientBootstrap] = None
     if (authEnabled) {
@@ -54,35 +52,22 @@ private[spark] class CustomBlockTransferService(
     logInfo(s"Server created on ${hostName}:${server.getPort}")
   }
 
-  override def fetchBlocks(
-      host: String,
-      port: Int,
-      execId: String,
-      blockIds: Array[String],
-      listener: BlockFetchingListener,
-      tempFileManager: DownloadFileManager): Unit = {
+  // custom communication protocol between
+  def customFetchData(
+    host: String,
+    port: Int,
+    execId: String,
+    blockIds: Array[String],
+    listener: CustomFetchingListener): Unit = {
     logTrace(s"Fetch blocks from $host:$port (executor id $execId)")
     try {
-      val blockFetchStarter = new RetryingBlockFetcher.BlockFetchStarter {
-        override def createAndStart(blockIds: Array[String], listener: BlockFetchingListener) {
-          val client = clientFactory.createClient(host, port)
-          new CustomOneForOneBlockFetcher(client, appId, execId, blockIds, listener).start()
-        }
-      }
-
-      val maxRetries = transportConf.maxIORetries()
-      if (maxRetries > 0) {
-        // Note this Fetcher will correctly handle maxRetries == 0; we avoid it just in case there's
-        // a bug in this code. We should remove the if statement once we're sure of the stability.
-        new RetryingBlockFetcher(transportConf, blockFetchStarter, blockIds, listener).start()
-      } else {
-        blockFetchStarter.createAndStart(blockIds, listener)
-      }
+      val client = clientFactory.createClient(host, port)
+      new CustomOneForOneFetcher(client, appId, execId, blockIds, listener).start()
     } catch {
       case e: Exception =>
         logError("Exception while beginning fetchBlocks", e)
-        blockIds.foreach(listener.onBlockFetchFailure(_, e))
-    }
+        blockIds.foreach(listener.onFetchFailure(_, e))
   }
+}
 
 }
