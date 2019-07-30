@@ -212,8 +212,8 @@ private[spark] class BlockManager(
     // Look for a constructor taking a SparkConf and a BlockTransferService, then one taking just
     // SparkConf, then one taking no arguments
     try {
-      cls.getConstructor(classOf[SparkConf], classOf[BlockTransferService])
-        .newInstance(conf, blockTransferService.hostName)
+      cls.getConstructor(classOf[SparkConf])
+        .newInstance(conf)
         .asInstanceOf[T]
     } catch {
       case _: NoSuchMethodException =>

@@ -29,11 +29,12 @@ import org.apache.spark.network.client.{RpcResponseCallback, TransportClientBoot
 import org.apache.spark.network.{BlockDataManager, BlockTransferService, TransportContext}
 import org.apache.spark.network.crypto.{AuthClientBootstrap, AuthServerBootstrap}
 import org.apache.spark.{SparkConf, SparkEnv}
-import org.apache.spark.network.netty.SparkTransportConf
+import org.apache.spark.network.netty.{NettyBlockTransferService, SparkTransportConf}
 import org.apache.spark.network.server.{TransportServer, TransportServerBootstrap}
 import org.apache.spark.network.shuffle.protocol.{UploadBlock, UploadBlockStream}
 import org.apache.spark.network.shuffle.{BlockFetchingListener, DownloadFileManager, OneForOneBlockFetcher, RetryingBlockFetcher}
 import org.apache.spark.network.util.JavaUtils
+import org.apache.spark.rpc.RpcEnv
 import org.apache.spark.serializer.JavaSerializer
 import org.apache.spark.storage.{BlockId, StorageLevel}
 import org.apache.spark.util.Utils
@@ -42,13 +43,14 @@ import scala.concurrent.{Future, Promise}
 import scala.reflect.ClassTag
 
 
-private[spark] class CustomTransferService(
-   conf: SparkConf,
-   host: String)
+private[spark] class CustomTransferService(conf: SparkConf)
   extends BlockTransferService{
 
   private val Cores = conf.get(CustomTransferConf.NUM_USABLE_CORES).toInt
   private val RpcPort = conf.get(CustomTransferConf.RPC_SERVER_PORT).toInt
+  private val host = SparkEnv.get.rpcEnv.address.host
+
+  println(host)
 
   private[network] val serializer = new JavaSerializer(conf)
   private[network] val securityManager = SparkEnv.get.securityManager
