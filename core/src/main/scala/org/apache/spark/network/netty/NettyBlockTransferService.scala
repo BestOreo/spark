@@ -83,6 +83,7 @@ private[spark] class NettyBlockTransferService(
       val server = transportContext.createServer(bindAddress, port, bootstraps.asJava)
       (server, server.getPort)
     }
+
     Utils.startServiceOnPort(_port, startService, conf, getClass.getName)._1
   }
 
