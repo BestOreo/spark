@@ -45,6 +45,7 @@ import org.apache.spark.metrics.source.Source
 import org.apache.spark.network._
 import org.apache.spark.network.buffer.ManagedBuffer
 import org.apache.spark.network.client.StreamCallbackWithID
+import org.apache.spark.network.custom.CustomTransferService
 import org.apache.spark.network.netty.SparkTransportConf
 import org.apache.spark.network.shuffle._
 import org.apache.spark.network.shuffle.protocol.ExecutorShuffleInfo
@@ -192,7 +193,37 @@ private[spark] class BlockManager(
     new ExternalShuffleClient(transConf, securityManager,
       securityManager.isAuthenticationEnabled(), conf.get(config.SHUFFLE_REGISTRATION_TIMEOUT))
   } else {
-    blockTransferService
+    val nettyBlockTransferServiceName =
+      classOf[org.apache.spark.network.netty.NettyBlockTransferService].getName
+    val customTransferServiceName =
+      conf.get("spark.shuffle.blockTransferService", nettyBlockTransferServiceName)
+    if (customTransferServiceName == nettyBlockTransferServiceName) {
+      blockTransferService
+    } else {
+      // This leaves us space to extend the existing BlockTransferService, or plug in a new one
+      instantiateClass(customTransferServiceName)
+    }
+  }
+
+  // Create an instance of the class with the given name, possibly initializing it with our conf or
+  // the Spark native BlockTransferService
+  private def instantiateClass[T](className: String): T = {
+    val cls = Utils.classForName(className)
+    // Look for a constructor taking a SparkConf and a BlockTransferService, then one taking just
+    // SparkConf, then one taking no arguments
+    try {
+      cls.getConstructor(classOf[SparkConf])
+        .newInstance(conf)
+        .asInstanceOf[T]
+    } catch {
+      case _: NoSuchMethodException =>
+        try {
+          cls.getConstructor(classOf[SparkConf]).newInstance(conf).asInstanceOf[T]
+        } catch {
+          case _: NoSuchMethodException =>
+            cls.getConstructor().newInstance().asInstanceOf[T]
+        }
+    }
   }
 
   // Max number of failures before this block manager refreshes the block locations from the driver
