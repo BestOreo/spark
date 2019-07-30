@@ -57,10 +57,10 @@ private[spark] class NettyBlockTransferService(
   private val authEnabled = securityManager.isAuthenticationEnabled()
   private val transportConf = SparkTransportConf.fromSparkConf(conf, "shuffle", numCores)
 
-  private var transportContext: TransportContext = _
-  private var server: TransportServer = _
-  private var clientFactory: TransportClientFactory = _
-  private var appId: String = _
+  private[this] var transportContext: TransportContext = _
+  private[this] var server: TransportServer = _
+  private[this] var clientFactory: TransportClientFactory = _
+  private[this] var appId: String = _
 
   override def init(blockDataManager: BlockDataManager): Unit = {
     val rpcHandler = new NettyBlockRpcServer(conf.getAppId, serializer, blockDataManager)
