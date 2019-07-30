@@ -50,8 +50,6 @@ private[spark] class CustomTransferService(conf: SparkConf)
   private val RpcPort = conf.get(CustomTransferConf.RPC_SERVER_PORT).toInt
   private val host = SparkEnv.get.rpcEnv.address.host
 
-  println(host)
-
   private[network] val serializer = new JavaSerializer(conf)
   private[network] val securityManager = SparkEnv.get.securityManager
   private[network] val authEnabled = securityManager.isAuthenticationEnabled()
