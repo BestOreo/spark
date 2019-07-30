@@ -18,7 +18,7 @@
 package org.apache.spark.storage
 
 import java.io._
-import java.lang.ref.{ReferenceQueue => JReferenceQueue, WeakReference}
+import java.lang.ref.{WeakReference, ReferenceQueue => JReferenceQueue}
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
 import java.util.Collections
@@ -31,10 +31,8 @@ import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.Random
 import scala.util.control.NonFatal
-
 import com.codahale.metrics.{MetricRegistry, MetricSet}
 import org.apache.commons.io.IOUtils
-
 import org.apache.spark._
 import org.apache.spark.executor.DataReadMethod
 import org.apache.spark.internal.Logging
@@ -45,6 +43,7 @@ import org.apache.spark.metrics.source.Source
 import org.apache.spark.network._
 import org.apache.spark.network.buffer.ManagedBuffer
 import org.apache.spark.network.client.StreamCallbackWithID
+import org.apache.spark.network.custom.CustomTransferService
 import org.apache.spark.network.netty.SparkTransportConf
 import org.apache.spark.network.shuffle._
 import org.apache.spark.network.shuffle.protocol.ExecutorShuffleInfo
@@ -194,13 +193,13 @@ private[spark] class BlockManager(
   } else {
     val nettyBlockTransferServiceName =
       classOf[org.apache.spark.network.netty.NettyBlockTransferService].getName
-    val configBlockTransferServiceName =
+    val customTransferServiceName =
       conf.get("spark.shuffle.blockTransferService", nettyBlockTransferServiceName)
-    if (configBlockTransferServiceName == nettyBlockTransferServiceName) {
+    if (customTransferServiceName == nettyBlockTransferServiceName) {
       blockTransferService
     } else {
       // This leaves us space to extend the existing BlockTransferService, or plug in a new one
-      instantiateClass(configBlockTransferServiceName)
+      instantiateClass(customTransferServiceName)
     }
   }
 

@@ -25,13 +25,14 @@ import org.apache.spark.network.client.{RpcResponseCallback, TransportClient}
 import org.apache.spark.network.netty.NettyBlockRpcServer
 import org.apache.spark.serializer.Serializer
 
-
 class CustomNettyRpcServer (
        appId: String,
        serializer: Serializer,
-       blockManager: BlockDataManager,
-       answer: String)
+       blockManager: BlockDataManager
+       )
   extends NettyBlockRpcServer(appId, serializer, blockManager) with Logging {
+
+  private val expectedAnswer = "Hello CustomBlockTransferService"
 
   override def receive(
       client: TransportClient,
@@ -40,13 +41,14 @@ class CustomNettyRpcServer (
 
     val buf = Unpooled.wrappedBuffer(rpcMessage)
     buf.readByte()
+
     val message = CustomMessage.decode(buf)
 
     println("CustomNettyRpcServer receiving " + message)
     message match {
       case m: CustomMessage =>
         println("message matches CustomMessage")
-        responseContext.onSuccess(ByteBuffer.wrap(answer.getBytes()))
+        responseContext.onSuccess(ByteBuffer.wrap(expectedAnswer.getBytes()))
     }
   }
 
