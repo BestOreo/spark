@@ -47,14 +47,14 @@ private[spark] class CustomTransferService(
    host: String)
   extends BlockTransferService{
 
-  val tmpCores = 1
-  val tmpPort = 54321
+  private val Cores = conf.get(CustomTransferConf.NUM_USABLE_CORES).toInt
+  private val RpcPort = conf.get(CustomTransferConf.RPC_SERVER_PORT).toInt
 
   private[network] val serializer = new JavaSerializer(conf)
   private[network] val securityManager = SparkEnv.get.securityManager
   private[network] val authEnabled = securityManager.isAuthenticationEnabled()
   private[network] val transportConf =
-    SparkTransportConf.fromSparkConf(conf, "shuffle", numUsableCores=tmpCores)
+    SparkTransportConf.fromSparkConf(conf, "shuffle", numUsableCores=Cores)
 
   var transportContext: TransportContext = _
   var server: TransportServer = _
@@ -82,7 +82,7 @@ private[spark] class CustomTransferService(
       val server = transportContext.createServer(host, port, bootstraps.asJava)
       (server, server.getPort)
     }
-    Utils.startServiceOnPort(startPort=tmpPort, startService, conf, getClass.getName)._1
+    Utils.startServiceOnPort(RpcPort, startService, conf, getClass.getName)._1
   }
 
   override def shuffleMetrics(): MetricSet = {

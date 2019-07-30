@@ -17,7 +17,7 @@
 package org.apache.spark.network.custom
 
 import org.apache.spark.network.BlockDataManager
-import org.apache.spark.{SecurityManager, SparkConf, SparkContext, SparkEnv, SparkFunSuite}
+import org.apache.spark.{SparkConf, SparkContext, SparkFunSuite}
 import org.apache.spark.storage.ShuffleBlockId
 import org.mockito.Mockito.{mock, verify}
 import org.scalatest.{BeforeAndAfterEach, Matchers}
@@ -47,7 +47,7 @@ class CustomTransferServiceSuite extends SparkFunSuite
       .set("spark.app.id", s"test-${getClass.getName}")
     new SparkContext("local", "test", conf)
     // build a rpc server always replies (blockId.name, expectedAnswer)
-    transferService = createService(conf, port = 0)
+    transferService = createService(conf)
     val blockId = ShuffleBlockId(1,2,3)
     val listener = mock(classOf[CustomFetchingListener])
 
@@ -60,7 +60,7 @@ class CustomTransferServiceSuite extends SparkFunSuite
     verify(listener).onFetchSuccess(blockId.name, expectedAnswer)
   }
 
-  private def createService(conf: SparkConf, port: Int): CustomTransferService = {
+  private def createService(conf: SparkConf): CustomTransferService = {
     val blockDataManager = mock(classOf[BlockDataManager])
     val service = new CustomTransferService(conf, "localhost")
     service.init(blockDataManager)
