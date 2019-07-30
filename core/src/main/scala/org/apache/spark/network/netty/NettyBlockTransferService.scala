@@ -53,14 +53,14 @@ private[spark] class NettyBlockTransferService(
   extends BlockTransferService {
 
   // TODO: Don't use Java serialization, use a more cross-version compatible serialization format.
-  protected val serializer = new JavaSerializer(conf)
-  protected val authEnabled = securityManager.isAuthenticationEnabled()
-  protected val transportConf = SparkTransportConf.fromSparkConf(conf, "shuffle", numCores)
+  private val serializer = new JavaSerializer(conf)
+  private val authEnabled = securityManager.isAuthenticationEnabled()
+  private val transportConf = SparkTransportConf.fromSparkConf(conf, "shuffle", numCores)
 
-  protected var transportContext: TransportContext = _
-  protected var server: TransportServer = _
-  protected var clientFactory: TransportClientFactory = _
-  protected var appId: String = _
+  private var transportContext: TransportContext = _
+  private var server: TransportServer = _
+  private var clientFactory: TransportClientFactory = _
+  private var appId: String = _
 
   override def init(blockDataManager: BlockDataManager): Unit = {
     val rpcHandler = new NettyBlockRpcServer(conf.getAppId, serializer, blockDataManager)
@@ -78,7 +78,7 @@ private[spark] class NettyBlockTransferService(
   }
 
   /** Creates and binds the TransportServer, possibly trying multiple ports. */
-  protected def createServer(bootstraps: List[TransportServerBootstrap]): TransportServer = {
+  private def createServer(bootstraps: List[TransportServerBootstrap]): TransportServer = {
     def startService(port: Int): (TransportServer, Int) = {
       val server = transportContext.createServer(bindAddress, port, bootstraps.asJava)
       (server, server.getPort)
